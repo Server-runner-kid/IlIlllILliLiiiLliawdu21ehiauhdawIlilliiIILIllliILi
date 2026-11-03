@@ -1,3 +1,4 @@
+
 name: Deploy Pages
 
 on:
@@ -13,25 +14,38 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Fetch Incari.html from latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p clients
-          gh release download --latest --pattern Incari.html --dir clients --clobber
 
-      - uses: actions/configure-pages@v5
+          LATEST_TAG=$(gh release view --json tagName --jq '.tagName')
 
-      - uses: actions/upload-pages-artifact@v3
+          echo "Latest release: $LATEST_TAG"
+
+          gh release download "$LATEST_TAG" \
+            --pattern Incari.html \
+            --dir clients \
+            --clobber
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
