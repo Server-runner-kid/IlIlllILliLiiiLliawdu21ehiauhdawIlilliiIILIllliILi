@@ -3,18 +3,13 @@ name: Deploy Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -25,84 +20,28 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      # Download repository files
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # Download the newest Incari release
-      - name: Download latest Incari release
+      - name: Download Incari
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-
-          echo "======================================"
-          echo "INCARI DOWNLOAD"
-          echo "======================================"
-
-          echo "Repository: $GITHUB_REPOSITORY"
-
           mkdir -p clients
-
-          LATEST_TAG=$(gh release view \
-            --repo "$GITHUB_REPOSITORY" \
-            --json tagName \
-            --jq '.tagName')
-
-          if [ -z "$LATEST_TAG" ]; then
-            echo "ERROR: No published release found."
-            exit 1
-          fi
-
-          echo "Latest release: $LATEST_TAG"
-
-          # Remove old deployed copy
-          rm -f clients/Incari.html
-
-          # Download new release asset
-          gh release download "$LATEST_TAG" \
+          gh release download \
             --repo "$GITHUB_REPOSITORY" \
             --pattern Incari.html \
             --dir clients \
             --clobber
 
-          # Verify download
-          if [ ! -s clients/Incari.html ]; then
-            echo "ERROR: Incari.html was not downloaded!"
-            exit 1
-          fi
-
-          echo ""
-          echo "DOWNLOAD SUCCESSFUL"
-
-          echo "File information:"
-          ls -lh clients/Incari.html
-
-          echo ""
-          echo "SHA256 CHECKSUM:"
-          sha256sum clients/Incari.html
-
-          echo "======================================"
-
-      # Configure GitHub Pages
-      - name: Configure GitHub Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # Upload complete website
-      - name: Upload website artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      # Deploy website
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
-
-      # Confirm deployment
-      - name: Deployment complete
-        run: |
-          echo "======================================"
-          echo "WEBSITE DEPLOYED SUCCESSFULLY"
-          echo "======================================"
-          echo "Website: ${{ steps.deployment.outputs.page_url }}"
